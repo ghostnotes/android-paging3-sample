@@ -4,18 +4,29 @@ import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import co.ghostnotes.sample.paging3.data.Repo
 import co.ghostnotes.sample.paging3.domain.GetGitHubReposUseCase
+import timber.log.Timber
 import javax.inject.Inject
 
 class RepoPagingSource @Inject constructor(
     val getGitHubReposUseCase: GetGitHubReposUseCase
 ) : PagingSource<Int, Repo>() {
     override fun getRefreshKey(state: PagingState<Int, Repo>): Int? {
-        return state.anchorPosition
+        Timber.d("--> GET getRefreshKey(): ${state.anchorPosition}")
+        return state.anchorPosition?.let { anchorPosition ->
+            val anchorPage = state.closestPageToPosition(anchorPosition)
+            anchorPage?.prevKey?.plus(1) ?: anchorPage?.nextKey?.minus(1)
+        }
     }
 
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Repo> {
         return try {
-            val nextPage = params.key ?: 1
+            val nextPage = if (params.key == null || params.key!! <= 0) {
+                1
+            } else {
+                params.key!!
+            }
+            Timber.d("--> GET key=${params.key}, nextPage=$nextPage")
+
             val repos = getGitHubReposUseCase(nextPage)
             LoadResult.Page(
                 data = repos,

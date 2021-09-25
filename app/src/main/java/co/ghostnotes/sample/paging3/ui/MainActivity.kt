@@ -30,6 +30,7 @@ import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.Flow
+import timber.log.Timber
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -71,7 +72,11 @@ fun Repos(repos: Flow<PagingData<Repo>>) {
 
     SwipeRefresh(
         state = swipeRefreshState,
-        onRefresh = { repoPagingItems.refresh() }
+        onRefresh = {
+            Timber.d("--> GET refreshing...")
+            swipeRefreshState.isRefreshing = true
+            repoPagingItems.refresh()
+        }
     ) {
         LazyColumn(
             modifier = Modifier
@@ -79,16 +84,23 @@ fun Repos(repos: Flow<PagingData<Repo>>) {
                 .padding(top = 8.dp, bottom = 8.dp, start = 16.dp, end = 16.dp)
         ) {
             items(repoPagingItems) { repo ->
-                RepoItem(repo)
+                RepoListItem(repo)
             }
 
             repoPagingItems.apply {
                 when {
                     loadState.refresh is LoadState.Loading -> {
-                        item { LoadingItem(modifier = Modifier.fillParentMaxSize()) }
+                        item { LoadingListItem(modifier = Modifier.fillParentMaxSize()) }
                     }
                     loadState.append is LoadState.Loading -> {
-                        item { LoadingItem(modifier = Modifier.fillParentMaxWidth()) }
+                        item { LoadingListItem(modifier = Modifier.fillParentMaxWidth()) }
+                    }
+                    loadState.refresh is LoadState.NotLoading -> {
+                        Timber.d("--> GET refresh: NotLoading")
+                        swipeRefreshState.isRefreshing = false
+                    }
+                    loadState.append is LoadState.NotLoading -> {
+                        Timber.d("--> GET append: NotLoading")
                     }
                 }
             }
@@ -97,7 +109,7 @@ fun Repos(repos: Flow<PagingData<Repo>>) {
 }
 
 @Composable
-fun RepoItem(repo: Repo?) {
+fun RepoListItem(repo: Repo?) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             modifier = Modifier.padding(top = 8.dp),
@@ -113,7 +125,7 @@ fun RepoItem(repo: Repo?) {
 }
 
 @Composable
-fun LoadingItem(modifier: Modifier) {
+fun LoadingListItem(modifier: Modifier) {
     Box(modifier = modifier.padding(16.dp)) {
         CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
     }
